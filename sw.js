@@ -3,13 +3,13 @@
    - Las páginas se piden primero a la red (así llegan las actualizaciones) con respaldo al guardado.
    - La TRM (datos.gov.co) NO se intercepta ni se guarda aquí: la app maneja su propio respaldo
      y así nunca se muestra una tasa vieja por error. */
-const VERSION = 'b9908dfd70';
+const VERSION = 'b9908dfd71';
 const SHELL = 'exportcost-shell-' + VERSION;
 const FONTS = 'exportcost-fonts';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
-  './icons/apple-touch-icon.png', './icons/favicon.svg',
+  './icon-192.png', './icon-512.png', './icon-maskable-512.png',
+  './apple-touch-icon.png', './favicon.svg',
 ];
 
 self.addEventListener('install', (e) => {
