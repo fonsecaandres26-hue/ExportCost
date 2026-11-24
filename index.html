@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ExportCost</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#F4F1EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1A2B" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ExportCost">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="description" content="Costo total de exportación según el Incoterm, con la TRM del día y clasificación arancelaria.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#F4F1EA;--panel:#FFFFFF;--line:#D9D2C3;--text:#14233A;--muted:#5F6F85;--gold:#876920;--teal:#1F7A66;--navy:#14233A;--on:#FFFFFF;--warn:#A8452F;--soft:#EDE8DC;--chip:#FFFFFF}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0E1A2B;--panel:#132339;--line:#28405C;--text:#EAF0F6;--muted:#8CA0B8;--gold:#C6A15B;--teal:#3F9C86;--navy:#C6A15B;--on:#0E1A2B;--warn:#E08A6F;--soft:#0F2033;--chip:#0E1A2B}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0E1A2B;--panel:#132339;--line:#28405C;--text:#EAF0F6;--muted:#8CA0B8;--gold:#C6A15B;--teal:#3F9C86;--navy:#C6A15B;--on:#0E1A2B;--warn:#E08A6F;--soft:#0F2033;--chip:#0E1A2B}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:1040px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 96px max(16px,env(safe-area-inset-left))}
+h1{font:500 32px/1.1 "Fraunces",Georgia,serif;margin:8px 0 2px}h1 span{color:var(--gold)}
+h2{font:500 19px/1.25 "Fraunces",Georgia,serif;margin:0 0 10px;text-wrap:balance}
+p{margin:0}.sub{color:var(--muted);font-size:13px;margin:0 0 12px}.muted{color:var(--muted)}
+small{display:block;color:var(--muted);font-size:12.5px;line-height:1.45}
+a{color:var(--teal)}
+button{font:inherit;color:inherit;cursor:pointer;min-height:40px}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.link{background:none;border:0;padding:4px 0;min-height:0;color:var(--teal);font-size:13px;text-decoration:underline;text-align:left}
+.code{font:500 13px ui-monospace,Menlo,Consolas,monospace;color:var(--gold)}
+.eyebrow{font-size:11px;letter-spacing:.12em;color:var(--gold);font-weight:600;margin-bottom:6px}
+
+/* TRM del día */
+.fx{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:12px;padding:14px 16px;margin:14px 0 4px;display:grid;gap:4px}
+.fx-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+.fx-k{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.fx-v{font:500 30px/1.1 "Fraunces",Georgia,serif;font-variant-numeric:tabular-nums}
+.fx-u{color:var(--muted);font-size:13px}
+.fx-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;font-size:13px}
+.fx-meta .day{font-weight:500}
+.fx-status{display:inline-flex;align-items:flex-start;gap:8px;color:var(--muted)}
+.dot{width:9px;height:9px;min-width:9px;flex:0 0 9px;align-self:flex-start;margin-top:.42em;border-radius:50%;display:block;background:var(--teal)}
+.dot.warn{background:var(--gold)}.dot.err{background:var(--warn)}
+.fx button.retry{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:4px 12px;min-height:32px;font-size:13px}
+#fx-manual-wrap{margin-top:6px}#fx-manual-wrap input{max-width:260px}
+
+nav{display:flex;gap:4px;margin:12px 0 16px;border-bottom:1px solid var(--line)}
+nav button{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:10px 6px;color:var(--muted);font-weight:500;font-size:15px}
+nav button.on{color:var(--text);border-color:var(--gold)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.lbl{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}.card>.lbl:first-of-type{margin-top:0}
+select,input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;font-size:16px;min-height:44px}
+.usd{position:relative;display:block}.usd:before{content:"US$";position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.usd input{padding-left:46px;text-align:right;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 13px;font-weight:500;font-size:13.5px;min-height:38px}
+.chips button.on{background:var(--navy);color:var(--on);border-color:var(--navy)}
+.note{background:var(--soft);border-left:3px solid var(--gold);border-radius:6px;padding:10px 12px;margin-top:10px;font-size:13.5px}
+.empty{color:var(--muted);font-size:14px}
+.chosen{display:flex;justify-content:space-between;gap:10px;background:var(--soft);border-radius:8px;padding:10px 12px}
+.chosen .x{background:none;border:0;font-size:22px;color:var(--muted);min-height:36px;width:36px}
+
+.merc{border:2px solid var(--gold)}.merc label{font-weight:600;font-size:16px}.merc input{font-size:24px;font-weight:500;margin-top:6px}
+.cop{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;text-align:right;margin-top:3px;min-height:1.4em}
+.line{display:grid;gap:8px;padding:12px 0;border-top:1px solid var(--line)}.line:first-of-type{border-top:0}
+.line-l label{font-weight:500;display:block}.line-r{display:grid;gap:2px}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;color:var(--chip);margin-top:4px;width:max-content}
+.tag.s{background:var(--gold)}.tag.b{background:var(--teal)}
+details.refs summary{cursor:pointer;font-weight:600;min-height:32px}
+.ref{margin-top:12px;font-size:13px;color:var(--muted);border-left:3px solid var(--teal);padding-left:10px}
+.ref b{color:var(--text)}
+
+.result{border-top:4px solid var(--teal)}
+.total{font:500 38px/1.1 "Fraunces",Georgia,serif;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cop-total{font-size:20px;font-weight:500;margin:4px 0 4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line);margin:16px 0 12px}
+.bar i{display:block;height:100%}.bar .s{background:var(--gold)}.bar .b{background:var(--teal)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;margin-bottom:12px;font-variant-numeric:tabular-nums}
+.split>div{min-width:0;overflow-wrap:anywhere}.split .cs{color:var(--gold)}.split .cb{color:var(--teal)}
+.split>div:last-child{text-align:right}
+
+.item{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.item .it-b{flex:1;min-width:0}.item .rk{font:500 20px "Fraunces",Georgia,serif;color:var(--gold);min-width:28px}
+.use{background:var(--teal);color:var(--chip);border:0;border-radius:8px;padding:8px 16px;font-weight:600;font-size:13.5px}
+.warn{font-size:12.5px;color:var(--muted);border-left:3px solid var(--gold);padding-left:10px;margin:12px 0}
+#out .chips{margin:4px 0 8px}
+.foot{margin-top:22px;font-size:12.5px;color:var(--muted)}
+.foot summary{cursor:pointer;font-weight:600;color:var(--text)}
+.foot table{border-collapse:collapse;width:100%;margin-top:8px}.foot td{padding:6px 4px;border-top:1px solid var(--line);vertical-align:top}.foot td:first-child{font-weight:500;white-space:nowrap;padding-right:12px;color:var(--text)}
+
+.mini{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;gap:12px;background:var(--navy);color:var(--on);padding:10px max(16px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));font-size:14px;font-variant-numeric:tabular-nums;z-index:5}
+.mini[hidden]{display:none}
+
+@media (min-width:560px){.line{grid-template-columns:1fr minmax(180px,230px);align-items:start}}
+@media (min-width:900px){
+  .cols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start}
+  .col-out{position:sticky;top:12px}
+  .mini{display:none}
+  main{padding-bottom:48px}
+}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+#install{background:var(--navy);color:var(--on);border:0;border-radius:999px;padding:8px 16px;font-weight:600;font-size:13.5px;white-space:nowrap;margin-top:8px}
+#install[hidden]{display:none}
+.toast{position:fixed;left:0;right:0;margin:0 auto;width:max-content;bottom:calc(72px + env(safe-area-inset-bottom));z-index:9;background:var(--navy);color:var(--on);border-radius:12px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.28);max-width:calc(100vw - 32px)}
+.toast[hidden]{display:none}.toast button{background:var(--on);color:var(--navy);border:0;border-radius:8px;padding:6px 12px;font-weight:600;min-height:34px}
+html{overscroll-behavior-y:none}body{-webkit-tap-highlight-color:transparent}
+@media (display-mode:standalone){.foot .howto{display:none}}
+@media (min-width:900px){.toast{bottom:24px}}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .25s}}
+</style>
+</head>
+<body>
+<main>
+  <div class="head">
+    <div><h1>Export<span>Cost</span></h1>
+    <p class="sub">Costo total de exportación según el Incoterm elegido · Comercio Internacional</p></div>
+    <button id="install" hidden>Instalar app</button>
+  </div>
+
+  <section class="fx" aria-labelledby="fx-title" aria-live="polite">
+    <div class="fx-top"><span class="fx-k" id="fx-title">TRM de hoy</span><span class="fx-v" id="fx-rate">—</span><span class="fx-u">pesos por 1 dólar</span></div>
+    <div class="fx-meta"><span class="day" id="today"></span><span id="fx-vig" class="muted"></span></div>
+    <div class="fx-meta"><span class="fx-status" id="fx-status"></span><button class="retry" id="fx-retry" hidden>Reintentar</button></div>
+    <div id="fx-manual-wrap" hidden><label class="sr" for="fx-manual">Tasa manual en pesos por dólar</label><input id="fx-manual" type="number" inputmode="decimal" min="500" step="0.01" placeholder="Tasa manual, COP por US$ 1"></div>
+  </section>
+
+  <nav aria-label="Secciones"><button data-t="calc">Calculadora</button><button data-t="prod">Productos</button></nav>
+  <div id="v"></div>
+
+  <details class="foot"><summary>Qué datos se actualizan solos y cuáles no</summary>
+    <table>
+      <tr><td>TRM y fecha</td><td>Se consultan a diario a la serie oficial de la Superfinanciera en Datos Abiertos y se renuevan sola al cambiar el día.</td></tr>
+      <tr><td>Rankings</td><td>Cifras anuales de 2025 (DANE, DIAN, Analdex, Datasur). No cambian a diario.</td></tr>
+      <tr><td>Tarifas de referencia</td><td>Consultadas en octubre de 2026. Son orientativas, no cotizaciones.</td></tr>
+      <tr class="howto"><td>Instalar como app</td><td>Android o computador (Chrome, Edge): botón «Instalar app» o menú ⋮ → Instalar. iPhone (Safari): Compartir → Añadir a pantalla de inicio. Funciona sin conexión; la TRM se actualiza al volver a tener internet.</td></tr>
+      <tr><td>Acuerdos comerciales</td><td>Catálogo del MinCIT consultado el 6 de noviembre de 2026.</td></tr>
+    </table>
+    <p style="margin-top:10px">Los códigos son del Sistema Armonizado a 6 dígitos. La NANDINA usa 8 y Colombia emplea subpartidas nacionales de 10; el gravamen depende del código completo. Esta herramienta no calcula aranceles: confirme la clasificación y los tributos con su agencia de aduanas en la <a href="https://www.dian.gov.co/" target="_blank" rel="noopener">DIAN</a> y los acuerdos en <a href="https://www.tlc.gov.co/acuerdos/vigente" target="_blank" rel="noopener">MinCIT</a>.</p>
+  </details>
+</main>
+<div class="mini" id="mini" hidden></div>
+<div class="toast" id="update" role="status" hidden><span>Hay una versión nueva.</span><button id="update-btn">Recargar</button></div>
+<script>
+// Clasificación arancelaria basada en el Sistema Armonizado (SA / HS).
+// Colombia usa la Nomenclatura Arancelaria (NANDINA): los primeros 6 dígitos son
+// los del SA y los dígitos 7–10 son subpartidas regionales/nacionales.
+
+const SECTIONS = [
+  { from: 1, to: 5, n: 'I', name: 'Animales vivos y productos del reino animal' },
+  { from: 6, to: 14, n: 'II', name: 'Productos del reino vegetal' },
+  { from: 15, to: 15, n: 'III', name: 'Grasas y aceites animales o vegetales' },
+  { from: 16, to: 24, n: 'IV', name: 'Alimentos, bebidas, líquidos alcohólicos y tabaco' },
+  { from: 25, to: 27, n: 'V', name: 'Productos minerales' },
+  { from: 28, to: 38, n: 'VI', name: 'Productos de las industrias químicas' },
+  { from: 39, to: 40, n: 'VII', name: 'Plástico, caucho y sus manufacturas' },
+  { from: 41, to: 43, n: 'VIII', name: 'Pieles, cueros y peletería' },
+  { from: 44, to: 46, n: 'IX', name: 'Madera, corcho y cestería' },
+  { from: 47, to: 49, n: 'X', name: 'Pasta de madera, papel y cartón' },
+  { from: 50, to: 63, n: 'XI', name: 'Materias textiles y sus manufacturas' },
+  { from: 64, to: 67, n: 'XII', name: 'Calzado, sombreros y artículos similares' },
+  { from: 68, to: 70, n: 'XIII', name: 'Manufacturas de piedra, cerámica y vidrio' },
+  { from: 71, to: 71, n: 'XIV', name: 'Perlas, piedras y metales preciosos' },
+  { from: 72, to: 83, n: 'XV', name: 'Metales comunes y sus manufacturas' },
+  { from: 84, to: 85, n: 'XVI', name: 'Máquinas, aparatos y material eléctrico' },
+  { from: 86, to: 89, n: 'XVII', name: 'Material de transporte' },
+  { from: 90, to: 92, n: 'XVIII', name: 'Instrumentos de óptica, medida y médico-quirúrgicos' },
+  { from: 94, to: 96, n: 'XX', name: 'Mercancías y productos diversos' },
+];
+
+const CHAPTERS = {
+  '02': 'Carne y despojos comestibles',
+  '03': 'Pescados, crustáceos y moluscos',
+  '04': 'Leche, lácteos, huevos y miel',
+  '06': 'Plantas vivas y productos de la floricultura',
+  '07': 'Hortalizas, plantas, raíces y tubérculos',
+  '08': 'Frutas y frutos comestibles',
+  '09': 'Café, té, yerba mate y especias',
+  '10': 'Cereales',
+  '12': 'Semillas y frutos oleaginosos',
+  '15': 'Grasas y aceites animales o vegetales',
+  '16': 'Preparaciones de carne, pescado o crustáceos',
+  '17': 'Azúcares y artículos de confitería',
+  '18': 'Cacao y sus preparaciones',
+  '19': 'Preparaciones a base de cereales',
+  '20': 'Preparaciones de hortalizas, frutas u otros frutos',
+  '22': 'Bebidas, líquidos alcohólicos y vinagre',
+  '23': 'Residuos de la industria alimentaria; alimentos para animales',
+  '25': 'Sal, azufre, tierras y piedras; cales y cementos',
+  '26': 'Minerales metalíferos, escorias y cenizas',
+  '27': 'Combustibles minerales, aceites minerales y sus productos',
+  '29': 'Productos químicos orgánicos',
+  '30': 'Productos farmacéuticos',
+  '31': 'Abonos',
+  '33': 'Aceites esenciales, perfumería y cosmética',
+  '34': 'Jabones, agentes de superficie y preparaciones de limpieza',
+  '38': 'Productos diversos de las industrias químicas',
+  '39': 'Plástico y sus manufacturas',
+  '40': 'Caucho y sus manufacturas',
+  '42': 'Manufacturas de cuero; artículos de viaje',
+  '44': 'Madera y manufacturas de madera',
+  '48': 'Papel y cartón; manufacturas de pasta de celulosa',
+  '49': 'Productos editoriales (libros, periódicos)',
+  '52': 'Algodón',
+  '54': 'Filamentos sintéticos o artificiales',
+  '61': 'Prendas y complementos de vestir, de punto',
+  '62': 'Prendas y complementos de vestir, excepto los de punto',
+  '63': 'Los demás artículos textiles confeccionados',
+  '64': 'Calzado',
+  '69': 'Productos cerámicos',
+  '70': 'Vidrio y sus manufacturas',
+  '71': 'Perlas finas, piedras y metales preciosos',
+  '72': 'Fundición, hierro y acero',
+  '73': 'Manufacturas de fundición, hierro o acero',
+  '74': 'Cobre y sus manufacturas',
+  '76': 'Aluminio y sus manufacturas',
+  '84': 'Reactores nucleares, calderas, máquinas y aparatos mecánicos',
+  '85': 'Máquinas, aparatos y material eléctrico; sonido e imagen',
+  '87': 'Vehículos automóviles, tractores y sus partes',
+  '88': 'Aeronaves y aparatos espaciales',
+  '90': 'Instrumentos y aparatos de óptica, medida y médico-quirúrgicos',
+  '94': 'Muebles; mobiliario médico-quirúrgico; iluminación',
+  '95': 'Juguetes, juegos y artículos de deporte',
+  '96': 'Manufacturas diversas',
+  '98': 'Disposiciones especiales (capítulo nacional)',
+};
+
+function sectionFor(chapterNumber) {
+  if (chapterNumber >= 97) {
+    return { n: '—', name: 'Capítulos especiales (arte, antigüedades y disposiciones nacionales)' };
+  }
+  const s = SECTIONS.find((x) => chapterNumber >= x.from && chapterNumber <= x.to);
+  return s ? { n: s.n, name: s.name } : { n: '—', name: 'Sin sección' };
+}
+
+// hs: string de 6 dígitos, con o sin punto (p. ej. "090111" o "0901.11")
+function classify(hs) {
+  const digits = String(hs).replace(/\D/g, '');
+  const chapter = digits.slice(0, 2);
+  const heading = digits.slice(0, 4);
+  const sub = digits.slice(0, 6);
+  const sec = sectionFor(parseInt(chapter, 10));
+  return {
+    digits,
+    chapter,
+    chapterName: CHAPTERS[chapter] || 'Capítulo ' + chapter,
+    heading: heading,
+    headingFmt: heading,
+    subheading: sub,
+    subheadingFmt: sub.length === 6 ? sub.slice(0, 4) + '.' + sub.slice(4) : sub,
+    sectionNumber: sec.n,
+    sectionName: sec.name,
+  };
+}
+
+function formatHS(hs) {
+  return classify(hs).subheadingFmt;
+}
+
+// Definición de campos que ingresa el usuario
+const FIELD_DEFS = [
+  { key: 'mercancia', label: 'Valor de la mercancía', hint: 'Valor comercial de la carga (factura)', def: '10000' },
+  { key: 'flete', label: 'Flete internacional', hint: 'Transporte principal internacional', def: '2850' },
+  { key: 'seguro', label: 'Seguro', hint: 'Cobertura de la carga en tránsito', def: '71' },
+  { key: 'aduana', label: 'Gastos de aduana', hint: 'Trámites y derechos de exportación', def: '330' },
+  { key: 'documentacion', label: 'Documentación', hint: 'Certificados, factura, BL/AWB, etc.', def: '100' },
+  { key: 'otros', label: 'Otros gastos', hint: 'Manejo, almacenaje, empaque, etc.', def: '200' },
+];
+
+// Valores de referencia de mercado (consultados en la web, octubre 2026). Son orientativos:
+// cada cotización real depende de la ruta, el naviero, el producto y la temporada.
+// opts: valores fijos en US$. rates: % de prima sobre el valor asegurado (mercancía + flete) x 110 %.
+const REFS = {
+  flete: {
+    note: 'Contenedor seco desde ~US$ 2.850 (20\') y ~US$ 4.550 (40\') en la ruta Miami–Cartagena (tarifa publicada hacia Colombia; la ruta inversa varía). Rango general 2026: US$ 1.200 – 7.200 por contenedor según ruta y temporada. Reefer 20\': US$ 3.500 – 8.000.',
+    opts: [{ l: "20' seco", v: 2850 }, { l: "40' seco", v: 4550 }],
+    src: [['BR Logistics', 'https://www.brlogistics.net/us/?p=11128'], ['Suaid Global', 'https://suaidglobal.com/es/insights/ocean-freight-rates-2026/']],
+  },
+  seguro: {
+    note: 'La prima se cobra como % del valor asegurado, que normalmente es mercancía + flete + 10 %. Tasas típicas: FPA 0,2–0,4 %, WA 0,35–0,6 %, Todo riesgo 0,5–1,0 % (hasta 2 % en electrónica, farmacéuticos o alimentos).',
+    rates: [{ l: 'FPA 0,3 %', r: 0.3 }, { l: 'WA 0,5 %', r: 0.5 }, { l: 'Todo riesgo 0,75 %', r: 0.75 }],
+    src: [['Suaid Global', 'https://suaidglobal.com/es/insights/lcl-cargo-insurance/'], ['La República / Fasecolda', 'https://www.larepublica.co/especiales/seguros-2024/asi-puede-proteger-su-mercancia-de-los-riesgos-durante-el-proceso-de-transporte-3896757']],
+  },
+  aduana: {
+    note: 'No existe tarifa oficial: los honorarios del agente de aduanas son libres y no encontré una cifra pública vigente. Referencia de un ejercicio académico (valores antiguos, no vigentes): pesaje/cubicaje US$ 10, movimiento para inspección US$ 220 y bodegaje US$ 25/día por contenedor (4 días ≈ US$ 330 por contenedor, sin honorarios). Pida cotización a un agente de aduanas.',
+    opts: [{ l: 'Ejemplo por contenedor: 330', v: 330 }],
+    src: [['Ejercicio UIS', 'https://tic.uis.edu.co/ava/mod/resource/view.php?id=46566']],
+  },
+  documentacion: {
+    note: 'No encontré una tarifa pública vigente. El RUT y el registro en la VUCE no tienen costo; el certificado de origen y la DEX tienen costos oficiales pequeños (el ejercicio académico citado usa COP 10.000 y COP 20.000). El grueso suele ser el cargo por documentos (BL/AWB) que cobra el naviero o agente: pida cotización.',
+    opts: [],
+    src: [['Platzi (RUT y VUCE)', 'https://platzi.com/cursos/cacao-swisscontact/rut-vuce-y-subpartida-para-exportar-caca/'], ['Ejercicio UIS', 'https://tic.uis.edu.co/ava/mod/resource/view.php?id=46552']],
+  },
+  otros: {
+    note: 'Referencia de THC (manejo en terminal de origen): US$ 180 – 280 por contenedor (ejemplo de puertos asiáticos; en Colombia las tarifas de Cartagena se publican en la Supertransporte y varían por operador). Sume empaque, acarreo y almacenaje según su caso.',
+    opts: [{ l: 'THC bajo 180', v: 180 }, { l: 'THC alto 280', v: 280 }],
+    src: [['Suaid Global', 'https://suaidglobal.com/es/insights/fcl-container-rates-2026/'], ['Supertransporte', 'https://www.supertransporte.gov.co/documentos/2012/delegada%20puertos/tarifas_portuarias_octubre.pdf']],
+  },
+};
+
+function numOf(x) { const n = parseFloat(x); return isNaN(n) ? 0 : n; }
+
+// Matriz de responsabilidades: true = el vendedor asume ese costo bajo ese Incoterm.
+// "mercancia" siempre es del vendedor (es el precio de lo que vende).
+// Simplificación docente basada en Incoterms® 2020, agrupados en E / F / C / D.
+const INCOTERMS = {
+  EXW: {
+    code: 'EXW',
+    name: 'EXW — En Fábrica',
+    group: 'Grupo E · Salida',
+    desc: 'El vendedor entrega la mercancía en sus propias instalaciones. El comprador asume el flete, el seguro, los trámites de exportación y prácticamente todo el resto de la cadena.',
+    seller: { mercancia: true, flete: false, seguro: false, aduana: false, documentacion: false, otros: false },
+  },
+  FCA: {
+    code: 'FCA',
+    name: 'FCA — Libre Transportista',
+    group: 'Grupo F · Transporte principal no pagado',
+    desc: 'El vendedor entrega la mercancía despachada de exportación al transportista designado por el comprador. El flete internacional y el seguro corren por cuenta del comprador.',
+    seller: { mercancia: true, flete: false, seguro: false, aduana: true, documentacion: true, otros: false },
+  },
+  FAS: {
+    code: 'FAS',
+    name: 'FAS — Libre al Costado del Buque',
+    group: 'Grupo F · Transporte principal no pagado',
+    desc: 'El vendedor entrega la mercancía al costado del buque en el puerto de embarque, ya despachada de exportación. El flete y el seguro son responsabilidad del comprador.',
+    seller: { mercancia: true, flete: false, seguro: false, aduana: true, documentacion: true, otros: false },
+  },
+  FOB: {
+    code: 'FOB',
+    name: 'FOB — Libre a Bordo',
+    group: 'Grupo F · Transporte principal no pagado',
+    desc: 'El vendedor asume los costos hasta que la mercancía está a bordo del buque en el puerto de embarque. El flete internacional y el seguro los asume el comprador.',
+    seller: { mercancia: true, flete: false, seguro: false, aduana: true, documentacion: true, otros: false },
+  },
+  CFR: {
+    code: 'CFR',
+    name: 'CFR — Costo y Flete',
+    group: 'Grupo C · Transporte principal pagado',
+    desc: 'El vendedor paga el flete hasta el puerto de destino, pero el riesgo se transfiere al comprador cuando la mercancía está a bordo. El seguro corre por cuenta del comprador.',
+    seller: { mercancia: true, flete: true, seguro: false, aduana: true, documentacion: true, otros: true },
+  },
+  CIF: {
+    code: 'CIF',
+    name: 'CIF — Costo, Seguro y Flete',
+    group: 'Grupo C · Transporte principal pagado',
+    desc: 'El vendedor paga flete y seguro hasta el puerto de destino, aunque el riesgo se transfiere antes, cuando la mercancía está a bordo del buque.',
+    seller: { mercancia: true, flete: true, seguro: true, aduana: true, documentacion: true, otros: true },
+  },
+  CPT: {
+    code: 'CPT',
+    name: 'CPT — Transporte Pagado Hasta',
+    group: 'Grupo C · Transporte principal pagado',
+    desc: 'El vendedor contrata y paga el transporte hasta el destino convenido (cualquier medio). El seguro queda a cargo del comprador.',
+    seller: { mercancia: true, flete: true, seguro: false, aduana: true, documentacion: true, otros: true },
+  },
+  CIP: {
+    code: 'CIP',
+    name: 'CIP — Transporte y Seguro Pagados Hasta',
+    group: 'Grupo C · Transporte principal pagado',
+    desc: 'El vendedor paga transporte y seguro (con cobertura amplia) hasta el destino convenido, para cualquier medio de transporte.',
+    seller: { mercancia: true, flete: true, seguro: true, aduana: true, documentacion: true, otros: true },
+  },
+  DAP: {
+    code: 'DAP',
+    name: 'DAP — Entregada en Lugar',
+    group: 'Grupo D · Llegada',
+    desc: 'El vendedor asume todos los costos y riesgos hasta poner la mercancía a disposición en el lugar de destino, lista para descargar.',
+    seller: { mercancia: true, flete: true, seguro: false, aduana: true, documentacion: true, otros: true },
+  },
+  DPU: {
+    code: 'DPU',
+    name: 'DPU — Entregada en Lugar Descargada',
+    group: 'Grupo D · Llegada',
+    desc: 'Igual que DAP, pero el vendedor también asume la descarga de la mercancía en el lugar de destino convenido.',
+    seller: { mercancia: true, flete: true, seguro: false, aduana: true, documentacion: true, otros: true },
+  },
+  DDP: {
+    code: 'DDP',
+    name: 'DDP — Entregada Derechos Pagados',
+    group: 'Grupo D · Llegada',
+    desc: 'Máxima obligación del vendedor: asume todos los costos, incluidos aranceles y trámites de importación en el país de destino.',
+    seller: { mercancia: true, flete: true, seguro: true, aduana: true, documentacion: true, otros: true },
+  },
+};
+
+const INCOTERM_LIST = Object.keys(INCOTERMS).map((code) => INCOTERMS[code]);
+
+// Calcula el desglose y totales a partir de los valores ingresados y el Incoterm elegido
+function computeTotals(values, incotermCode) {
+  const it = INCOTERMS[incotermCode];
+  let grand = 0;
+  let sellerTotal = 0;
+  let buyerTotal = 0;
+
+  const rows = FIELD_DEFS.map((f) => {
+    const raw = parseFloat(values[f.key]);
+    const v = isNaN(raw) ? 0 : raw;
+    grand += v;
+    const isSeller = it.seller[f.key];
+    if (isSeller) sellerTotal += v;
+    else buyerTotal += v;
+    return { key: f.key, label: f.label, value: v, isSeller };
+  });
+
+  const sellerPct = grand > 0 ? (sellerTotal / grand) * 100 : 0;
+  const buyerPct = grand > 0 ? 100 - sellerPct : 0;
+
+  return { rows, grand, sellerTotal, buyerTotal, sellerPct, buyerPct };
+}
+
+function formatUSD(n) {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Catálogo de productos con clasificación arancelaria (SA / NANDINA, 6 dígitos)
+// y rankings de comercio exterior de Colombia.
+//
+// FUENTES DE LOS RANKINGS
+// - Exportaciones 2025: DANE / DIAN (boletín técnico dic-2025) y Analdex (informe dic-2025);
+//   valores de petróleo, café y carbón según DANE vía Valora Analitik.
+//   Los valores marcados con período distinto a 2025 (ene–jul, ene–nov) son parciales.
+//   Las posiciones sin valor (valor: null) NO tienen una cifra anual verificada:
+//   su orden es aproximado y debe confirmarse en DANE (www.dane.gov.co) antes de citarse.
+// - Importaciones 2025: ranking por subpartida de Datasur (registros aduaneros, US$ CIF),
+//   agrupado aquí por código de 6 dígitos. Puede diferir de las cifras oficiales del DANE.
+//
+// IMPORTANTE: los códigos son del Sistema Armonizado a 6 dígitos. La NANDINA colombiana
+// llega a 10 dígitos y el gravamen arancelario depende de la subpartida completa;
+// confirme siempre en el Arancel de Aduanas vigente de la DIAN.
+
+// ---------- Rankings ----------
+
+// valor: millones de US$ FOB. periodo: período al que corresponde el valor.
+const TOP_EXPORTS = [
+  { rank: 1, name: 'Aceites crudos de petróleo', hs: '270900', valor: 12480, periodo: '2025', nota: 'Principal producto de exportación; cayó frente a 2024.' },
+  { rank: 2, name: 'Café sin tostar (sin descafeinar)', hs: '090111', valor: 5788, periodo: '2025', nota: 'En 2025 superó al carbón por primera vez en 25 años.' },
+  { rank: 3, name: 'Hulla / carbón térmico', hs: '270112', valor: 4901, periodo: '2025', nota: 'Cayó cerca de 31 % frente a 2024.' },
+  { rank: 4, name: 'Oro no monetario (en bruto)', hs: '710812', valor: 4644, periodo: '2025', nota: 'Cifra del grupo "otros sectores", compuesto principalmente por oro.' },
+  { rank: 5, name: 'Flores frescas cortadas (las demás)', hs: '060319', valor: 779, periodo: 'ene–jul 2025', nota: 'Solo "las demás flores y capullos"; rosas y claveles van en otras subpartidas.' },
+  { rank: 6, name: 'Bananos tipo Cavendish frescos', hs: '080390', valor: 724, periodo: 'ene–jul 2025', nota: 'Crecimiento sostenido en 2025.' },
+  { rank: 7, name: 'Aceite de palma y palmiste', hs: '151110', valor: 933, periodo: 'ene–nov 2025', nota: 'Una de las mayores alzas del año (+84,9 %).' },
+  { rank: 8, name: 'Los demás aceites de petróleo (diésel, fuel oil)', hs: '271019', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 9, name: 'Ferroníquel', hs: '720260', valor: null, periodo: '', nota: 'Sin cifra anual verificada; las ventas cayeron 12,3 % en 2025.' },
+  { rank: 10, name: 'Aguacate Hass', hs: '080440', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 11, name: 'Azúcar de caña', hs: '170199', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 12, name: 'Medicamentos para uso humano', hs: '300490', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 13, name: 'Policloruro de vinilo (PVC)', hs: '390410', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 14, name: 'Polipropileno en formas primarias', hs: '390210', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 15, name: 'Carne bovina deshuesada congelada', hs: '020230', valor: null, periodo: '', nota: 'Sin cifra anual verificada; en fuerte crecimiento.' },
+  { rank: 16, name: 'Puertas y ventanas de aluminio', hs: '761010', valor: null, periodo: '', nota: 'Sin cifra anual verificada; destaca en ventas a EE. UU.' },
+  { rank: 17, name: 'Minerales de cobre y sus concentrados', hs: '260300', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 18, name: 'Productos de belleza y maquillaje', hs: '330499', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 19, name: 'Galletas dulces', hs: '190531', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+  { rank: 20, name: 'Cemento Portland', hs: '252329', valor: null, periodo: '', nota: 'Sin cifra anual verificada.' },
+];
+
+// Posiciones 1–4 respaldadas por cifras anuales 2025 comparables (DANE/Analdex).
+// Desde la 5 en adelante el orden es aproximado: los valores disponibles cubren
+// períodos parciales distintos o no existen, por lo que no son comparables entre sí.
+const EXPORTS_VERIFIED_UP_TO = 4;
+
+// valor: millones de US$ CIF, 2025 (suma de subpartidas nacionales con el mismo código de 6 dígitos).
+const TOP_IMPORTS = [
+  { rank: 1, name: 'Gasolina para motores', hs: '271012', valor: 2758.4, periodo: '2025', nota: 'Suma de gasolina premium/extra y corriente.' },
+  { rank: 2, name: 'Medicamentos de uso humano', hs: '300490', valor: 1798.0, periodo: '2025', nota: '' },
+  { rank: 3, name: 'Teléfonos inteligentes (smartphones)', hs: '851713', valor: 1702.4, periodo: '2025', nota: '' },
+  { rank: 4, name: 'Maíz en grano (excepto semilla)', hs: '100590', valor: 1530.0, periodo: '2025', nota: 'Insumo clave para alimentos balanceados.' },
+  { rank: 5, name: 'Automóviles de 1.500–3.000 cm³', hs: '870323', valor: 1085.3, periodo: '2025', nota: '' },
+  { rank: 6, name: 'Computadores portátiles', hs: '847130', valor: 948.2, periodo: '2025', nota: '' },
+  { rank: 7, name: 'Sueros, vacunas y productos inmunológicos', hs: '300215', valor: 916.5, periodo: '2025', nota: '' },
+  { rank: 8, name: 'Los demás aceites de petróleo (diésel y otros)', hs: '271019', valor: 859.8, periodo: '2025', nota: '' },
+  { rank: 9, name: 'Motocicletas (hasta 185 cm³)', hs: '980110', valor: 795.1, periodo: '2025', nota: 'Capítulo 98 (nacional): confirmar la descripción exacta en el Arancel.' },
+  { rank: 10, name: 'Gas natural licuado (GNL)', hs: '271111', valor: 669.6, periodo: '2025', nota: '' },
+  { rank: 11, name: 'Torta de soya (residuos de aceite)', hs: '230400', valor: 659.6, periodo: '2025', nota: '' },
+  { rank: 12, name: 'Automóviles híbridos (no enchufables)', hs: '870340', valor: 652.8, periodo: '2025', nota: '' },
+  { rank: 13, name: 'Vehículos eléctricos', hs: '870380', valor: 618.3, periodo: '2025', nota: 'Suma de dos subpartidas nacionales.' },
+  { rank: 14, name: 'Automóviles de 1.000–1.500 cm³', hs: '870322', valor: 543.1, periodo: '2025', nota: '' },
+  { rank: 15, name: 'Trigo y morcajo (tranquillón)', hs: '100199', valor: 474.6, periodo: '2025', nota: '' },
+  { rank: 16, name: 'Aparatos de comunicación y redes', hs: '851762', valor: 434.8, periodo: '2025', nota: '' },
+  { rank: 17, name: 'Televisores y receptores de TV en color', hs: '852872', valor: 414.3, periodo: '2025', nota: '' },
+  { rank: 18, name: 'Aceite de soya en bruto', hs: '150710', valor: 363.3, periodo: '2025', nota: '' },
+  { rank: 19, name: 'Alambre de cobre refinado (> 6 mm)', hs: '740811', valor: 315.1, periodo: '2025', nota: '' },
+  { rank: 20, name: 'Camiones diésel (hasta 5 t)', hs: '870421', valor: 310.2, periodo: '2025', nota: '' },
+];
+
+// ---------- Catálogo de búsqueda ----------
+// kw: palabras clave y sinónimos para facilitar la búsqueda.
+const C = (name, hs, kw = '') => ({ name, hs, kw });
+
+const BASE_CATALOG = [
+  // Agro y alimentos
+  C('Café sin tostar', '090111', 'cafe grano verde arabica'),
+  C('Café tostado', '090121', 'cafe tostado molido'),
+  C('Café soluble', '210111', 'cafe instantaneo extracto'),
+  C('Cacao en grano', '180100', 'cacao chocolate'),
+  C('Chocolate en barras y tabletas', '180632', 'chocolate'),
+  C('Arroz', '100630', 'arroz blanco'),
+  C('Maíz en grano', '100590', 'maiz cereal'),
+  C('Trigo', '100199', 'trigo cereal harina'),
+  C('Azúcar de caña', '170199', 'azucar panela'),
+  C('Leche en polvo', '040221', 'leche lacteos'),
+  C('Carne bovina deshuesada congelada', '020230', 'carne res vaca'),
+  C('Carne de pollo congelada', '020714', 'pollo ave'),
+  C('Camarones congelados', '030617', 'camaron langostino marisco'),
+  C('Banano', '080390', 'banano platano cavendish fruta'),
+  C('Aguacate Hass', '080440', 'aguacate palta fruta'),
+  C('Piña', '080430', 'pina fruta tropical'),
+  C('Uchuva', '081090', 'uchuva physalis fruta'),
+  C('Limón Tahití', '080550', 'limon citrico lima'),
+  C('Rosas frescas cortadas', '060311', 'rosa flor flores'),
+  C('Claveles frescos cortados', '060312', 'clavel flor flores'),
+  C('Las demás flores frescas cortadas', '060319', 'flores follaje hortensia astromelia'),
+  C('Aceite de palma en bruto', '151110', 'palma aceite africana'),
+  C('Torta de soya', '230400', 'soya soja harina alimento animal'),
+  C('Aceite de soya en bruto', '150710', 'soya soja aceite'),
+  C('Habas de soya', '120190', 'soya soja frijol'),
+  C('Galletas dulces', '190531', 'galleta galletas'),
+  C('Cerveza de malta', '220300', 'cerveza bebida'),
+  C('Ron', '220840', 'ron licor bebida alcoholica'),
+  C('Cigarrillos', '240220', 'cigarrillo tabaco'),
+  // Minerales y energía
+  C('Aceites crudos de petróleo', '270900', 'petroleo crudo oil'),
+  C('Hulla (carbón térmico)', '270112', 'carbon hulla bituminoso mineral'),
+  C('Gasolina para motores', '271012', 'gasolina combustible'),
+  C('Diésel / gasóleo y otros aceites de petróleo', '271019', 'diesel acpm gasoleo fuel oil combustoleo'),
+  C('Gas natural licuado (GNL)', '271111', 'gas natural licuado gnl'),
+  C('Gas natural en estado gaseoso', '271121', 'gas natural'),
+  C('Energía eléctrica', '271600', 'electricidad energia'),
+  C('Cemento Portland', '252329', 'cemento construccion'),
+  C('Minerales de cobre', '260300', 'cobre mineral concentrado'),
+  C('Ferroníquel', '720260', 'ferroniquel niquel'),
+  C('Oro no monetario en bruto', '710812', 'oro metal precioso'),
+  C('Esmeraldas', '710310', 'esmeralda piedra preciosa gema'),
+  // Química, plásticos, farmacia
+  C('Urea', '310210', 'urea fertilizante abono'),
+  C('Cloruro de potasio', '310420', 'potasa fertilizante abono'),
+  C('Medicamentos para uso humano', '300490', 'medicamento medicina farmaceutico droga'),
+  C('Sueros y vacunas (inmunológicos)', '300215', 'vacuna suero inmunologico'),
+  C('Productos de belleza y maquillaje', '330499', 'cosmetico maquillaje belleza perfumeria'),
+  C('Polietileno de alta densidad', '390120', 'polietileno plastico resina'),
+  C('Polipropileno', '390210', 'polipropileno plastico resina'),
+  C('PVC (policloruro de vinilo)', '390410', 'pvc plastico resina'),
+  C('Neumáticos para automóviles', '401110', 'llantas neumaticos caucho'),
+  // Textil, calzado, cuero
+  C('Camisetas de algodón (punto)', '610910', 'camiseta playera t-shirt ropa'),
+  C('Pantalones tipo jean de algodón', '620342', 'jean pantalon denim ropa'),
+  C('Calzado de caucho o plástico', '640299', 'zapatos calzado zapatillas'),
+  C('Bolsos de mano de cuero', '420221', 'bolso cartera cuero marroquineria'),
+  // Metales y manufacturas
+  C('Alambre de cobre refinado', '740811', 'alambre cobre'),
+  C('Tubos de acero', '730630', 'tubo acero tuberia'),
+  C('Puertas y ventanas de aluminio', '761010', 'puerta ventana aluminio'),
+  // Maquinaria, electrónica, vehículos
+  C('Computadores portátiles', '847130', 'laptop portatil computador pc'),
+  C('Teléfonos inteligentes', '851713', 'celular telefono smartphone movil'),
+  C('Aparatos de comunicación y redes', '851762', 'router modem red comunicacion'),
+  C('Televisores en color', '852872', 'televisor tv pantalla monitor'),
+  C('Lavadoras de ropa', '845020', 'lavadora electrodomestico'),
+  C('Refrigeradores domésticos', '841810', 'nevera refrigerador electrodomestico'),
+  C('Aparatos de aire acondicionado', '841510', 'aire acondicionado'),
+  C('Baterías de iones de litio', '850760', 'bateria litio'),
+  C('Dispositivos semiconductores y paneles solares', '854143', 'panel solar fotovoltaico semiconductor led'),
+  C('Automóviles 1.000–1.500 cm³', '870322', 'carro automovil auto vehiculo'),
+  C('Automóviles 1.500–3.000 cm³', '870323', 'carro automovil auto vehiculo'),
+  C('Automóviles híbridos', '870340', 'carro hibrido vehiculo'),
+  C('Vehículos eléctricos', '870380', 'carro electrico vehiculo ev'),
+  C('Camiones diésel (hasta 5 t)', '870421', 'camion camioneta vehiculo carga'),
+  C('Tractores', '870121', 'tractor agricola maquinaria'),
+  C('Motocicletas (50–250 cm³)', '871120', 'moto motocicleta'),
+  C('Bicicletas', '871200', 'bicicleta bici'),
+  C('Excavadoras y palas mecánicas', '842952', 'excavadora maquinaria construccion'),
+  C('Aviones de ala fija (> 15.000 kg)', '880240', 'avion aeronave'),
+  // Instrumentos, muebles, juguetes, otros
+  C('Instrumentos y aparatos de medicina', '901890', 'instrumento medico equipo hospital'),
+  C('Muebles de madera para dormitorio', '940350', 'mueble cama closet'),
+  C('Juguetes', '950300', 'juguete muñeca'),
+  C('Libros impresos', '490199', 'libro editorial'),
+];
+
+// Une los rankings al catálogo (sin duplicar códigos ya presentes)
+const seen = new Set(BASE_CATALOG.map((p) => p.hs));
+const EXTRA = [...TOP_EXPORTS, ...TOP_IMPORTS]
+  .filter((p) => {
+    if (seen.has(p.hs)) return false;
+    seen.add(p.hs);
+    return true;
+  })
+  .map((p) => C(p.name, p.hs, ''));
+
+const CATALOG = [...BASE_CATALOG, ...EXTRA];
+
+// ---------- Búsqueda ----------
+const norm = (s) =>
+  String(s)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+
+function searchProducts(query, limit = 25) {
+  const q = norm(query).trim();
+  if (!q) return [];
+  const qDigits = q.replace(/\D/g, '');
+  const isCode = qDigits.length >= 2 && /^[\d.\s]+$/.test(q);
+  const tokens = q.split(/\s+/).filter(Boolean);
+
+  const scored = [];
+  for (const p of CATALOG) {
+    const hay = norm(p.name + ' ' + p.kw);
+    let score = 0;
+    if (isCode) {
+      if (p.hs.startsWith(qDigits)) score = 100 - (p.hs.length - qDigits.length);
+    } else {
+      if (norm(p.name).startsWith(q)) score += 50;
+      if (tokens.every((t) => hay.includes(t))) score += 30;
+      else continue;
+    }
+    if (score > 0) scored.push({ p, score });
+  }
+  scored.sort((a, b) => b.score - a.score || a.p.name.localeCompare(b.p.name));
+  return scored.slice(0, limit).map((x) => x.p);
+}
+
+function formatMillions(v) {
+  if (v === null || v === undefined) return 'n. d.';
+  return 'US$ ' + v.toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 1 : 0, maximumFractionDigits: 1 }) + ' M';
+}
+
+
+// Acuerdos comerciales (MinCIT, consultados el 6 nov 2026)
+const AGREEMENTS=[
+['Estados Unidos',['Estados Unidos'],'TLC'],['Canadá',['Canadá'],'TLC'],['México',['México'],'TLC / Alianza del Pacífico'],['Chile',['Chile'],'Acuerdo comercial / Alianza del Pacífico'],['Comunidad Andina',['Bolivia','Ecuador','Perú'],'Integración andina'],['Mercosur',['Argentina','Brasil','Paraguay','Uruguay'],'ACE 72'],['Triángulo Norte',['El Salvador','Guatemala','Honduras'],'TLC'],['Costa Rica',['Costa Rica'],'TLC'],['Corea del Sur',['Corea del Sur'],'TLC'],['Israel',['Israel'],'TLC'],['Reino Unido',['Reino Unido'],'Acuerdo de continuidad'],['EFTA',['Suiza','Noruega','Islandia','Liechtenstein'],'Acuerdo de libre comercio'],['Unión Europea',['Alemania','Austria','Bélgica','Bulgaria','Chipre','Croacia','Dinamarca','Eslovaquia','Eslovenia','España','Estonia','Finlandia','Francia','Grecia','Hungría','Irlanda','Italia','Letonia','Lituania','Luxemburgo','Malta','Países Bajos','Polonia','Portugal','República Checa','Rumanía','Suecia'],'Acuerdo comercial'],['Venezuela',['Venezuela'],'Alcance parcial · AAP 28'],['Panamá',['Panamá'],'Alcance parcial · AAP 29 (distinto de un TLC integral)'],['Cuba',['Cuba'],'Complementación económica · ACE 49'],['CARICOM',['Trinidad y Tobago','Jamaica','Barbados','Guyana','Antigua y Barbuda','Belice','Dominica','Granada','Montserrat','San Cristóbal y Nieves','Santa Lucía','San Vicente y las Granadinas'],'Alcance parcial · AAP 31'],['Nicaragua',['Nicaragua'],'Alcance parcial · AAP 6']];
+
+// Costos adicionales (transporte interno, destino, tributos) y su responsable por Incoterm
+FIELD_DEFS.push({key:'origen',label:'Transporte interno en Colombia',hint:'Recogida y traslado hasta la salida, según lugar pactado',def:'0'},{key:'destino',label:'Transporte interno en destino',hint:'Desde terminal de llegada al lugar de entrega',def:'0'},{key:'importacion',label:'Agencia y despacho de importación',hint:'Honorarios cotizados en el país de destino',def:'0'},{key:'tributos',label:'Aranceles e impuestos en destino',hint:'Valor confirmado para la subpartida y país; no se calcula automáticamente',def:'0'},{key:'descarga',label:'Descarga final',hint:'Costo cotizado para descargar en el destino',def:'0'});
+for(const [k,it]of Object.entries(INCOTERMS)){it.seller.origen=k!=='EXW';it.seller.destino=['DAP','DPU','DDP'].includes(k);it.seller.importacion=k==='DDP';it.seller.tributos=k==='DDP';it.seller.descarga=k==='DPU';}INCOTERMS.DDP.seller.seguro=false;
+
+'use strict';
+/* ExportCost · lógica de la interfaz.
+   Depende de src/data.js (clasificación, Incoterms, catálogo, rankings, acuerdos). */
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = (n, o) => new Intl.NumberFormat('es-CO', o).format(n);
+const usd = (n) => nf(n, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const cop = (n) => nf(n, { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+const num = (x) => { const n = parseFloat(x); return Number.isFinite(n) && n > 0 ? n : 0; };
+const r2 = (x) => String(Math.round(x * 100) / 100);
+const pct = (x) => nf(x, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+const millions = (v) => (v === null || v === undefined ? 'sin cifra anual' : 'US$ ' + nf(v, { maximumFractionDigits: 1 }) + ' M');
+
+/* ---------- Fecha y hora de Colombia ---------- */
+const TZ = 'America/Bogota';
+const bogotaDay = (d = new Date()) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); // AAAA-MM-DD
+const longToday = () => { const t = new Intl.DateTimeFormat('es-CO', { timeZone: TZ, dateStyle: 'full' }).format(new Date()); return t.charAt(0).toUpperCase() + t.slice(1); };
+const clock = (ms) => new Intl.DateTimeFormat('es-CO', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
+const shortDate = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' }).format(new Date(y, m - 1, d));
+};
+
+/* ---------- Estado de la calculadora ---------- */
+const KEY = 'exportcost-v3';
+const DEFAULTS = { mercancia: '10000', flete: '2850', seguro: '', aduana: '330', documentacion: '100', otros: '230', origen: '0', destino: '0', importacion: '0', tributos: '0', descarga: '0' };
+const COBERTURA = 0.005; // prima de referencia: 0,5 % del valor asegurado (mercancía + flete + 10 %)
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+
+const S = {
+  tab: 'calc',
+  code: INCOTERMS[saved.code] ? saved.code : 'FOB',
+  country: saved.country || 'Estados Unidos',
+  prod: saved.prod || null,
+  vals: { ...DEFAULTS, ...(saved.vals || {}) },
+  seguroManual: !!saved.seguroManual,
+  rk: 'exp',
+  q: '',
+};
+const autoSeguro = () => (num(S.vals.mercancia) + num(S.vals.flete)) * 1.1 * COBERTURA;
+if (!S.seguroManual) S.vals.seguro = r2(autoSeguro());
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({ code: S.code, country: S.country, prod: S.prod, vals: S.vals, seguroManual: S.seguroManual })); } catch (e) { /* sin almacenamiento */ }
+}
+
+/* ---------- TRM oficial, ligada al día ---------- */
+// Serie oficial de la TRM (Superfinanciera) en Datos Abiertos Colombia.
+const TRM_URL = 'https://www.datos.gov.co/resource/32sa-8pi3.json';
+const TRM_KEY = 'exportcost-trm';
+let trm = null; // { rate, from, to, checkedAt, day }
+try { trm = JSON.parse(localStorage.getItem(TRM_KEY) || 'null'); } catch (e) { trm = null; }
+if (trm && !(Number(trm.rate) > 0 && trm.from && trm.to)) trm = null;
+
+// status: loading | ok | old | cached | offline | error | manual
+const fx = { status: trm ? 'cached' : 'loading', manual: 0, busy: false, lastTry: 0 };
+const rate = () => fx.manual || (trm ? trm.rate : 0);
+
+function parseRow(x) {
+  const v = Number(x && x.valor);
+  if (!Number.isFinite(v) || v < 500 || v > 20000) return null; // descarta datos absurdos
+  if (!x.vigenciadesde || !x.vigenciahasta) return null;
+  return { rate: v, from: String(x.vigenciadesde).slice(0, 10), to: String(x.vigenciahasta).slice(0, 10) };
+}
+
+async function fetchTRM(today) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 12000);
+  try {
+    // Se piden las últimas filas y se elige la vigente HOY: la TRM del viernes se publica
+    // con antelación, así que la fila más reciente puede empezar mañana.
+    const qs = new URLSearchParams({ $order: 'vigenciadesde DESC', $limit: '6' });
+    const resp = await fetch(TRM_URL + '?' + qs, { signal: ctl.signal, headers: { Accept: 'application/json' } });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const rows = (await resp.json()).map(parseRow).filter(Boolean);
+    const row = rows.find((r) => r.from <= today) || null;
+    if (!row) throw new Error('sin TRM vigente');
+    return row;
+  } finally { clearTimeout(timer); }
+}
+
+async function refreshFX() {
+  if (fx.busy) return;
+  fx.busy = true; fx.lastTry = Date.now();
+  paintFX();
+  const today = bogotaDay();
+  try {
+    const row = await fetchTRM(today);
+    trm = { ...row, checkedAt: Date.now(), day: today };
+    fx.manual = 0;
+    fx.status = row.to >= today ? 'ok' : 'old';
+    try { localStorage.setItem(TRM_KEY, JSON.stringify(trm)); } catch (e) { /* sin almacenamiento */ }
+  } catch (e) {
+    fx.status = trm ? 'offline' : fx.manual ? 'manual' : 'error';
+  } finally {
+    fx.busy = false;
+    paintFX();
+    updateResults();
+  }
+}
+
+// ¿Toca volver a consultar? Al cambiar el día se consulta de inmediato; en el mismo día, cada 30 min.
+function fxDue() {
+  const elapsed = Date.now() - fx.lastTry;
+  if (!trm) return elapsed > 60e3;
+  if (trm.day !== bogotaDay()) return elapsed > 60e3;
+  if (fx.status === 'offline') return elapsed > 5 * 60e3;
+  return elapsed > 30 * 60e3;
+}
+
+function paintFX() {
+  const today = bogotaDay();
+  $('#today').textContent = longToday();
+  const r = rate();
+  $('#fx-rate').textContent = r ? nf(r, { style: 'currency', currency: 'COP', minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+  const vig = trm && !fx.manual ? `Vigente del ${shortDate(trm.from)} al ${shortDate(trm.to)}` : '';
+  let tone = 'ok', msg = '';
+  switch (fx.status) {
+    case 'ok': msg = `Actualizada hoy a las ${clock(trm.checkedAt)}`; break;
+    case 'old': tone = 'warn'; msg = `Hoy no hay una TRM más reciente; esta venció el ${shortDate(trm.to)}`; break;
+    case 'cached': tone = 'warn'; msg = fx.busy ? 'Mostrando el último dato guardado · actualizando…' : 'Último dato guardado'; break;
+    case 'offline': tone = 'warn'; msg = `Sin conexión con la fuente oficial · dato guardado el ${shortDate(trm.day)}`; break;
+    case 'manual': tone = 'warn'; msg = 'Tasa escrita por usted. Se reemplaza sola cuando la consulta oficial responda'; break;
+    case 'error': tone = 'err'; msg = 'No se pudo consultar la TRM oficial'; break;
+    default: tone = 'warn'; msg = 'Consultando la TRM de hoy…';
+  }
+  if (fx.status === 'ok' && fx.busy) msg += ' · actualizando…';
+  $('#fx-status').innerHTML = `<i class="dot ${tone}"></i>${esc(msg)}`;
+  $('#fx-vig').textContent = vig;
+  $('#fx-retry').hidden = !['offline', 'error', 'manual', 'old'].includes(fx.status) || fx.busy;
+  $('#fx-manual-wrap').hidden = !(fx.status === 'error' || fx.status === 'manual');
+}
+
+/* ---------- Calculadora ---------- */
+const countries = [...new Set([...AGREEMENTS.flatMap((a) => a[1]), 'China', 'Japón', 'India', 'Australia', 'República Dominicana', 'Otro destino'])].sort((a, b) => a.localeCompare(b, 'es'));
+const agreementNote = (c) => {
+  const a = AGREEMENTS.filter((x) => x[1].includes(c));
+  return (a.length ? a.map((x) => `<b>${esc(x[0])}</b> · ${esc(x[2])}`).join('<br>') : 'Sin acuerdo identificado en este catálogo. Confirme en MinCIT.') +
+    '<br><small>La preferencia depende del producto y de las reglas de origen; no implica arancel cero automático.</small>';
+};
+
+function prodChip() {
+  if (!S.prod) return `<div class="empty">Sin producto. <button class="link" data-t="prod">Buscar y ver su clasificación →</button></div>`;
+  const c = classify(S.prod.hs);
+  return `<div class="chosen"><div><div class="code">${c.subheadingFmt}</div><b>${esc(S.prod.name)}</b>
+    <small>Sección ${c.sectionNumber} · Capítulo ${c.chapter} ${esc(c.chapterName)}</small></div>
+    <button class="x" id="clr" aria-label="Quitar producto">×</button></div>`;
+}
+
+function line(f) {
+  const manualSeg = f.key === 'seguro';
+  return `<div class="line">
+    <div class="line-l"><label for="k-${f.key}">${esc(f.label)}</label><small>${esc(f.hint)}</small><span class="tag" data-tag="${f.key}"></span>
+      ${manualSeg ? `<button class="link" id="seg-reset" ${S.seguroManual ? '' : 'hidden'}>Recalcular estimado (0,5 %)</button>` : ''}</div>
+    <div class="line-r"><span class="usd"><input id="k-${f.key}" data-k="${f.key}" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(S.vals[f.key])}"></span><span class="cop" data-cp="${f.key}"></span></div>
+  </div>`;
+}
+
+function refsBlock() {
+  const names = { flete: 'Flete internacional', seguro: 'Seguro', aduana: 'Gastos de aduana', documentacion: 'Documentación', otros: 'Otros gastos' };
+  return `<details class="card refs"><summary>Tarifas de referencia (consultadas en octubre de 2026)</summary>
+    <p class="sub">Son orientativas y no se actualizan a diario: solicite cotización a su naviero, aseguradora y agente de aduanas.</p>
+    ${Object.keys(REFS).map((k) => `<div class="ref"><b>${names[k]}</b><br>${esc(REFS[k].note)}<br><small>Fuentes: ${REFS[k].src.map((s) => `<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join(' · ')}</small></div>`).join('')}
+  </details>`;
+}
+
+function calcView() {
+  const it = INCOTERMS[S.code];
+  const m = FIELD_DEFS[0];
+  $('#v').innerHTML = `<div class="cols">
+   <div class="col-in">
+    <section class="card"><h2>Operación</h2>
+      <div class="lbl">Producto</div>${prodChip()}
+      <label class="lbl" for="country">País de destino</label>
+      <select id="country">${countries.map((c) => `<option ${c === S.country ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+      <div class="note" id="agr">${agreementNote(S.country)}</div>
+      <div class="lbl">Incoterm 2020</div>
+      <div class="chips">${INCOTERM_LIST.map((i) => `<button data-c="${i.code}" class="${i.code === S.code ? 'on' : ''}" aria-pressed="${i.code === S.code}">${i.code}</button>`).join('')}</div>
+      <div class="note"><b>${esc(it.name)}</b> · ${esc(it.group)}<br>${esc(it.desc)}</div>
+    </section>
+    <section class="card merc"><label for="k-mercancia">${esc(m.label)}<small>${esc(m.hint)}</small></label>
+      <span class="usd"><input id="k-mercancia" data-k="mercancia" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(S.vals.mercancia)}"></span>
+      <div class="cop" data-cp="mercancia"></div></section>
+    <section class="card"><h2>Costos del envío <span class="muted">en US$</span></h2>
+      <p class="sub">Cada costo muestra quién lo asume con el Incoterm elegido.</p>
+      ${FIELD_DEFS.slice(1).map(line).join('')}</section>
+    ${refsBlock()}
+   </div>
+   <aside class="col-out" id="res" aria-live="polite"></aside>
+  </div>`;
+  updateResults();
+}
+
+function updateResults() {
+  if (S.tab !== 'calc') { $('#mini').hidden = true; return; }
+  const t = computeTotals(S.vals, S.code);
+  const r = rate();
+  const c = (n) => (r ? cop(n * r) : '—');
+  if ($('#res')) {
+    $('#res').innerHTML = `<section class="card result">
+      <div class="eyebrow">COSTO TOTAL DE LA OPERACIÓN · ${S.code}</div>
+      <div class="total">${usd(t.grand)}</div>
+      <div class="cop-total">${r ? c(t.grand) + ' <span class="muted">COP</span>' : 'Sin TRM disponible: escriba la tasa arriba para ver pesos'}</div>
+      <div class="bar" role="img" aria-label="Vendedor ${pct(t.sellerPct)}, comprador ${pct(t.buyerPct)}"><i class="s" style="width:${t.sellerPct}%"></i><i class="b" style="width:${t.buyerPct}%"></i></div>
+      <div class="split">
+        <div><b class="cs">Vendedor · ${pct(t.sellerPct)}</b><br>${usd(t.sellerTotal)}<br><span class="muted">${c(t.sellerTotal)}</span></div>
+        <div><b class="cb">Comprador · ${pct(t.buyerPct)}</b><br>${usd(t.buyerTotal)}<br><span class="muted">${c(t.buyerTotal)}</span></div>
+      </div>
+      <small class="muted">Colombia → ${esc(S.country)} · ${r ? (fx.manual ? 'Tasa manual' : `TRM vigente del ${shortDate(trm.from)} al ${shortDate(trm.to)}`) : 'sin conversión'}. No incluye margen bancario.</small>
+    </section>`;
+  }
+  const it = INCOTERMS[S.code];
+  document.querySelectorAll('[data-tag]').forEach((el) => {
+    const s = !!it.seller[el.dataset.tag];
+    el.className = 'tag ' + (s ? 's' : 'b');
+    el.textContent = s ? 'Vendedor' : 'Comprador';
+  });
+  document.querySelectorAll('[data-cp]').forEach((el) => { el.textContent = r ? cop(num(S.vals[el.dataset.cp]) * r) : '—'; });
+  $('#mini').hidden = false;
+  $('#mini').innerHTML = `<span>Total <b>${usd(t.grand)}</b></span><span>${r ? '<b>' + c(t.grand) + '</b>' : 'sin TRM'}</span>`;
+  save();
+}
+
+/* ---------- Productos y rankings ---------- */
+function prodView() {
+  $('#v').innerHTML = `<h2>Clasificación arancelaria</h2>
+    <label class="sr" for="q">Buscar producto</label>
+    <input id="q" type="search" placeholder="Producto o código: café, celular, 0901, 8517.13" autocomplete="off" value="${esc(S.q)}">
+    <div id="out"></div>`;
+  prodOut();
+}
+
+function itemHTML(p, i) {
+  const c = classify(p.hs);
+  const meta = p.valor !== undefined ? `<small>${millions(p.valor)}${p.valor !== null && p.periodo ? ' · ' + esc(p.periodo) : ''}${p.nota ? ' · ' + esc(p.nota) : ''}</small>` : `<small>Sección ${c.sectionNumber} · ${esc(c.chapterName)}</small>`;
+  return `<article class="item">${p.rank ? `<div class="rk">${p.rank}</div>` : ''}
+    <div class="it-b"><b>${esc(p.name)}</b><div class="code">${c.subheadingFmt} <span class="muted">· cap. ${c.chapter}</span></div>${meta}</div>
+    <button class="use" data-use="${p.hs}" data-name="${esc(p.name)}">Usar</button></article>`;
+}
+
+function prodOut() {
+  const q = S.q.trim();
+  if (q) {
+    const r = searchProducts(q);
+    $('#out').innerHTML = r.length ? r.map(itemHTML).join('') : '<p class="sub">Sin resultados en el catálogo. Pruebe con otro nombre o con los primeros dígitos del código, o consulte el Arancel de Aduanas de la DIAN.</p>';
+    return;
+  }
+  const L = S.rk === 'exp' ? TOP_EXPORTS : TOP_IMPORTS;
+  $('#out').innerHTML = `<p class="sub">Catálogo de ${CATALOG.length} productos. Escriba para buscar o explore los 20 principales de Colombia.</p>
+    <div class="chips" role="group" aria-label="Ranking"><button data-r="exp" class="${S.rk === 'exp' ? 'on' : ''}">Más exportados</button><button data-r="imp" class="${S.rk === 'imp' ? 'on' : ''}">Más importados</button></div>
+    <p class="warn">${S.rk === 'exp'
+      ? `Fuente: DANE / DIAN y Analdex, 2025 (US$ FOB). Solo las posiciones 1 a ${EXPORTS_VERIFIED_UP_TO} tienen cifra anual comparable; el resto es orden aproximado. Confirme en el DANE antes de citarlo.`
+      : 'Fuente: Datasur, registros aduaneros 2025 (US$ CIF), agrupados por código de 6 dígitos. Puede diferir de las cifras oficiales del DANE.'} Son datos anuales, no se actualizan a diario.</p>
+    ${L.map(itemHTML).join('')}`;
+}
+
+/* ---------- Navegación y eventos ---------- */
+function show() {
+  document.querySelectorAll('nav button').forEach((b) => {
+    const on = b.dataset.t === S.tab;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-current', on ? 'page' : 'false');
+  });
+  (S.tab === 'calc' ? calcView : prodView)();
+  window.scrollTo(0, 0);
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-t],[data-c],[data-r],[data-use],#clr,#seg-reset,#fx-retry');
+  if (!t) return;
+  if (t.id === 'fx-retry') { refreshFX(); return; }
+  if (t.id === 'clr') { S.prod = null; calcView(); return; }
+  if (t.id === 'seg-reset') { S.seguroManual = false; S.vals.seguro = r2(autoSeguro()); $('#k-seguro').value = S.vals.seguro; t.hidden = true; updateResults(); return; }
+  if (t.dataset.t) { S.tab = t.dataset.t; show(); return; }
+  if (t.dataset.c) { S.code = t.dataset.c; calcView(); return; }
+  if (t.dataset.r) { S.rk = t.dataset.r; prodOut(); return; }
+  if (t.dataset.use) { S.prod = { hs: t.dataset.use, name: t.dataset.name }; save(); S.tab = 'calc'; show(); }
+});
+
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.dataset.k) {
+    const k = t.dataset.k;
+    S.vals[k] = t.value;
+    if (k === 'seguro') { S.seguroManual = true; const b = $('#seg-reset'); if (b) b.hidden = false; }
+    if (!S.seguroManual && (k === 'mercancia' || k === 'flete')) {
+      S.vals.seguro = r2(autoSeguro());
+      const i = $('#k-seguro'); if (i) i.value = S.vals.seguro;
+    }
+    updateResults();
+  } else if (t.id === 'q') {
+    S.q = t.value; prodOut();
+  } else if (t.id === 'fx-manual') {
+    const v = Number(t.value);
+    fx.manual = v >= 500 && v <= 20000 ? v : 0;
+    fx.status = fx.manual ? 'manual' : 'error';
+    paintFX(); updateResults();
+  }
+});
+
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'country') { S.country = e.target.value; $('#agr').innerHTML = agreementNote(S.country); updateResults(); }
+});
+
+/* ---------- Arranque ---------- */
+paintFX();
+show();
+refreshFX();
+// Mantiene la tasa y la fecha al día aunque la página quede abierta o el equipo "despierte".
+setInterval(() => { paintFX(); if (fxDue()) refreshFX(); }, 30e3);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { paintFX(); if (fxDue()) refreshFX(); } });
+window.addEventListener('online', () => refreshFX());
+
+/* ---------- Instalación como app (PWA) ---------- */
+let installEvt = null;
+const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); installEvt = e;
+  if (!isStandalone()) $('#install').hidden = false;
+});
+window.addEventListener('appinstalled', () => { installEvt = null; $('#install').hidden = true; });
+$('#install').addEventListener('click', async () => {
+  const ev = installEvt; if (!ev) return;
+  installEvt = null; $('#install').hidden = true;
+  try { await ev.prompt(); await ev.userChoice; } catch (err) { /* el usuario cerró el diálogo */ }
+});
+
+// Service worker: solo con http(s); al abrir el archivo suelto (file://) la app funciona igual, sin modo offline.
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('./sw.js').catch(() => { /* sin service worker */ });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) $('#update').hidden = false; });
+  $('#update-btn').addEventListener('click', () => location.reload());
+}
+
+</script>
+</body>
+</html>
